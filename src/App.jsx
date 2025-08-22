@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
+// src/App.jsx
+import { useEffect, useMemo, useState } from "react";
 import { LOGO } from "./logo";
 
-// --- Product catalogue (by brand) ---
 const CATALOG = {
   "REF Stockholm": [
-    // If you have default prices for this, add them like the MY.ORGANICS example below
-    { id: "ref-gift-set", name: "REF Gift Set" },
+    { id: "ref-gift-set", name: "REF Gift Set" }, // (no preset pricing)
   ],
   "MY.ORGANICS": [
     {
@@ -19,282 +18,291 @@ const CATALOG = {
 
 const BRANDS = Object.keys(CATALOG);
 
+function useLocalStorage(key, initial) {
+  const [val, setVal] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : initial;
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch {}
+  }, [key, val]);
+  return [val, setVal];
+}
+
 export default function App() {
-  // Form state
-  const [brand, setBrand] = useState(BRANDS[0]);
-  const [productId, setProductId] = useState(CATALOG[BRANDS[0]][0]?.id ?? "");
-  const selectedProduct = useMemo(
-    () => CATALOG[brand].find((p) => p.id === productId) ?? null,
-    [brand, productId]
+  /* ------------------------ Product selection & pricing ------------------------ */
+  const [brand, setBrand] = useLocalStorage("brand", BRANDS[0]);
+  const products = useMemo(() => CATALOG[brand] || [], [brand]);
+  const [productId, setProductId] = useLocalStorage(
+    "productId",
+    (CATALOG[brand] && CATALOG[brand][0]?.id) || ""
   );
 
-  // Price state (autofills on product change if product has defaults)
-  const [salonCost, setSalonCost] = useState(
-    selectedProduct?.salonCost ?? ""
-  );
-  const [salonRrp, setSalonRrp] = useState(
-    selectedProduct?.salonRrp ?? ""
+  // Pricing (editable numbers, but product name is fixed via dropdown)
+  const [salonCost, setSalonCost] = useLocalStorage("salonCost", 0);
+  const [salonRrp, setSalonRrp] = useLocalStorage("salonRrp", 0);
+
+  // When brand changes, reset product to that brand's first
+  useEffect(() => {
+    const first = CATALOG[brand]?.[0]?.id ?? "";
+    setProductId(first);
+  }, [brand, setProductId]);
+
+  // When product changes, auto-fill cost/rrp if the catalog has presets
+  useEffect(() => {
+    const p = products.find((x) => x.id === productId);
+    if (p) {
+      if (typeof p.salonCost === "number") setSalonCost(p.salonCost);
+      if (typeof p.salonRrp === "number") setSalonRrp(p.salonRrp);
+    }
+  }, [productId, products, setSalonCost, setSalonRrp]);
+
+  /* --------------------------- Salon Info (calculator) -------------------------- */
+  const [promoDays, setPromoDays] = useLocalStorage("promoDays", 7);
+  const [stylists, setStylists] = useLocalStorage("stylists", 3);
+  const [perStylistPerDay, setPerStylistPerDay] = useLocalStorage(
+    "perStylistPerDay",
+    2
   );
 
-  // When brand changes, reset to first product and re-apply defaults
-  const handleBrandChange = (e) => {
-    const nextBrand = e.target.value;
-    setBrand(nextBrand);
-    const first = CATALOG[nextBrand][0] ?? null;
-    setProductId(first?.id ?? "");
-    if (first?.salonCost != null) setSalonCost(first.salonCost);
-    else setSalonCost("");
-    if (first?.salonRrp != null) setSalonRrp(first.salonRrp);
-    else setSalonRrp("");
+  const perDayTotal = Math.max(0, Number(stylists) || 0) * Math.max(0, Number(perStylistPerDay) || 0);
+  const totalUnits = perDayTotal * Math.max(0, Number(promoDays) || 0);
+  const totalCost = (Number(salonCost) || 0) * totalUnits;
+
+  const selectedProduct = products.find((x) => x.id === productId);
+
+  const money = (n) =>
+    new Intl.NumberFormat("en-GB", {
+      style: "currency",
+      currency: "GBP",
+      minimumFractionDigits: 2,
+    }).format(isFinite(n) ? n : 0);
+
+  const num = (v, setter) => {
+    const clean = v.replace(/[^0-9.]/g, "");
+    setter(clean);
   };
-
-  // When product changes, (re)apply defaults if present
-  const handleProductChange = (e) => {
-    const nextId = e.target.value;
-    setProductId(nextId);
-    const p = CATALOG[brand].find((x) => x.id === nextId);
-    if (p?.salonCost != null) setSalonCost(p.salonCost);
-    else setSalonCost("");
-    if (p?.salonRrp != null) setSalonRrp(p.salonRrp);
-    else setSalonRrp("");
-  };
-
-  // Derived calcs
-  const numericCost = parseFloat(salonCost) || 0;
-  const numericRrp = parseFloat(salonRrp) || 0;
-  const profit = Math.max(numericRrp - numericCost, 0);
-  const marginPct = numericRrp > 0 ? (profit / numericRrp) * 100 : 0;
-  const markupPct = numericCost > 0 ? (profit / numericCost) * 100 : 0;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#fafafa",
-        color: "#111",
-        fontFamily:
-          "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif",
-        padding: "16px",
-      }}
-    >
-      {/* Header with hard-coded logo */}
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          marginBottom: 24,
-          borderBottom: "1px solid #eee",
-          paddingBottom: 16,
-        }}
-      >
-        <img
-          src={LOGO}
-          alt="Salon Brands Pro"
-          style={{ height: 48, width: "auto", display: "block" }}
-        />
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
-          Salon Retail Calculator
-        </h1>
+    <div style={styles.app}>
+      <header style={styles.header}>
+        <img src={LOGO} alt="Salon Brands Pro" style={styles.logo} />
+        <h1 style={styles.title}>Salon Retail Calculator</h1>
       </header>
 
-      {/* Main content (single column; upload panel removed) */}
-      <main
-        style={{
-          maxWidth: 900,
-          margin: "0 auto",
-          display: "grid",
-          gap: 16,
-        }}
-      >
-        {/* Product by brand (no custom option) */}
-        <section
-          style={{
-            background: "#fff",
-            border: "1px solid #eee",
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <h2 style={{ marginTop: 0, fontSize: 16 }}>Product (by brand)</h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
+      {/* Product by Brand */}
+      <section style={styles.card}>
+        <h2 style={styles.h2}>Product (by brand)</h2>
+        <div style={styles.row}>
+          <label style={styles.label}>Brand</label>
+          <select
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            style={styles.select}
           >
-            <div>
-              <label
-                style={{ display: "block", fontSize: 13, marginBottom: 6 }}
-              >
-                Brand
-              </label>
-              <select
-                value={brand}
-                onChange={handleBrandChange}
-                style={selectStyle}
-              >
-                {BRANDS.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {BRANDS.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
+          </select>
+        </div>
 
-            <div>
-              <label
-                style={{ display: "block", fontSize: 13, marginBottom: 6 }}
-              >
-                Product
-              </label>
-              <select
-                value={productId}
-                onChange={handleProductChange}
-                style={selectStyle}
-              >
-                {CATALOG[brand].map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ gridColumn: "1 / -1" }}>
-              <label
-                style={{ display: "block", fontSize: 13, marginBottom: 6 }}
-              >
-                Product name (read-only)
-              </label>
-              <input
-                type="text"
-                value={selectedProduct?.name ?? ""}
-                readOnly
-                style={{ ...inputStyle, background: "#f6f6f6" }}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Pricing */}
-        <section
-          style={{
-            background: "#fff",
-            border: "1px solid #eee",
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <h2 style={{ marginTop: 0, fontSize: 16 }}>Pricing</h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
+        <div style={styles.row}>
+          <label style={styles.label}>Product</label>
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+            style={styles.select}
           >
-            <div>
-              <label
-                style={{ display: "block", fontSize: 13, marginBottom: 6 }}
-              >
-                Salon cost (£)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={salonCost}
-                onChange={(e) => setSalonCost(e.target.value)}
-                placeholder="e.g. 10.45"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label
-                style={{ display: "block", fontSize: 13, marginBottom: 6 }}
-              >
-                Salon RRP (£)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={salonRrp}
-                onChange={(e) => setSalonRrp(e.target.value)}
-                placeholder="e.g. 20.99"
-                style={inputStyle}
-              />
-            </div>
-          </div>
-        </section>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
-        {/* Results */}
-        <section
-          style={{
-            background: "#fff",
-            border: "1px solid #eee",
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <h2 style={{ marginTop: 0, fontSize: 16 }}>Results</h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 12,
-            }}
-          >
-            <Stat label="Profit (£)" value={fmt(profit)} />
-            <Stat label="Margin (%)" value={fmt(marginPct)} />
-            <Stat label="Markup (%)" value={fmt(markupPct)} />
+        <div style={styles.grid2}>
+          <div style={styles.row}>
+            <label style={styles.label}>Salon Cost (£)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={salonCost}
+              onChange={(e) => num(e.target.value, setSalonCost)}
+              style={styles.input}
+            />
           </div>
-        </section>
-      </main>
+          <div style={styles.row}>
+            <label style={styles.label}>Salon RRP (£)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={salonRrp}
+              onChange={(e) => num(e.target.value, setSalonRrp)}
+              style={styles.input}
+            />
+          </div>
+        </div>
+
+        <p style={styles.note}>
+          Product name is chosen from the list (not editable).{" "}
+          {selectedProduct ? (
+            <em>Selected: {selectedProduct.name}</em>
+          ) : (
+            <em>Choose a product</em>
+          )}
+        </p>
+      </section>
+
+      {/* Salon Information calculator */}
+      <section style={styles.card}>
+        <h2 style={styles.h2}>Salon Information</h2>
+
+        <div style={styles.grid3}>
+          <div style={styles.row}>
+            <label style={styles.label}>How many days are you running this promotion?</label>
+            <input
+              type="number"
+              min="0"
+              value={promoDays}
+              onChange={(e) => num(e.target.value, setPromoDays)}
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.row}>
+            <label style={styles.label}>How many stylists do you have?</label>
+            <input
+              type="number"
+              min="0"
+              value={stylists}
+              onChange={(e) => num(e.target.value, setStylists)}
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.row}>
+            <label style={styles.label}>How many do you think each stylist can sell a day?</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={perStylistPerDay}
+              onChange={(e) => num(e.target.value, setPerStylistPerDay)}
+              style={styles.input}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Outcome */}
+      <section style={styles.card}>
+        <h2 style={styles.h2}>Outcome</h2>
+
+        <div style={styles.kpis}>
+          <div style={styles.kpi}>
+            <div style={styles.kpiLabel}>Your stylists will sell (per day)</div>
+            <div style={styles.kpiValue}>{perDayTotal.toLocaleString()}</div>
+          </div>
+
+          <div style={styles.kpi}>
+            <div style={styles.kpiLabel}>Your stylists will sell (promotion total)</div>
+            <div style={styles.kpiValue}>{totalUnits.toLocaleString()}</div>
+          </div>
+
+          <div style={styles.kpi}>
+            <div style={styles.kpiLabel}>This will cost you</div>
+            <div style={styles.kpiValue}>{money(totalCost)}</div>
+          </div>
+        </div>
+        <p style={styles.noteSmall}>
+          Cost is calculated as <code>total units × salon cost</code>.
+        </p>
+      </section>
+
+      <footer style={styles.footer}>
+        <small>© {new Date().getFullYear()} Salon Brands Pro</small>
+      </footer>
     </div>
   );
 }
 
-function Stat({ label, value }) {
-  return (
-    <div
-      style={{
-        border: "1px dashed #ddd",
-        borderRadius: 10,
-        padding: 12,
-        background: "#fcfcfc",
-      }}
-    >
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700 }}>{value}</div>
-    </div>
-  );
-}
-
-const inputStyle = {
-  width: "100%",
-  border: "1px solid #ddd",
-  borderRadius: 8,
-  padding: "10px 12px",
-  fontSize: 14,
-  outline: "none",
+/* --------------------------------- Styles -------------------------------- */
+const styles = {
+  app: {
+    maxWidth: 980,
+    margin: "24px auto",
+    padding: 16,
+    fontFamily:
+      "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif",
+    color: "#0f172a",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 12,
+  },
+  logo: { height: 44, width: "auto" },
+  title: { fontSize: 22, margin: 0, fontWeight: 700 },
+  card: {
+    background: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+  },
+  h2: { margin: "0 0 12px", fontSize: 18 },
+  row: { display: "flex", flexDirection: "column", gap: 6 },
+  label: { fontSize: 13, color: "#475569" },
+  input: {
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid #d1d5db",
+    fontSize: 14,
+  },
+  select: {
+    padding: "10px 12px",
+    borderRadius: 10,
+    border: "1px solid #d1d5db",
+    fontSize: 14,
+    background: "#fff",
+  },
+  grid2: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    marginTop: 8,
+  },
+  grid3: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 12,
+  },
+  kpis: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr 1fr",
+    gap: 12,
+    marginTop: 8,
+  },
+  kpi: {
+    background: "#f8fafc",
+    border: "1px solid #e2e8f0",
+    borderRadius: 12,
+    padding: 14,
+  },
+  kpiLabel: { fontSize: 12, color: "#64748b" },
+  kpiValue: { fontSize: 22, fontWeight: 700, marginTop: 4 },
+  note: { marginTop: 8, color: "#64748b", fontSize: 13 },
+  noteSmall: { marginTop: 8, color: "#64748b", fontSize: 12 },
+  footer: { textAlign: "center", marginTop: 24, color: "#64748b" },
 };
-
-const selectStyle = {
-  ...inputStyle,
-  background: "#fff",
-};
-
-function fmt(n) {
-  // for money/percent display
-  const isNum = Number.isFinite(n);
-  if (!isNum) return "—";
-  // show 2 decimals for money, 1 for %
-  return n.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
