@@ -1,336 +1,310 @@
-// src/App.jsx
+// src/SalonRetailCalculator.jsx
 import { useEffect, useMemo, useState } from "react";
-import { LOGO } from "./logo";
 
-// ---- Set your default product pricing here ----
-const DEFAULT_PRICING = {
-  "ref-gift-set": { salonCost: 0, salonRrp: 0 }, // TODO: <- put your real REF Gift Set prices
-  "myorg-retail-shampoo": { salonCost: 10.45, salonRrp: 20.99 },
-};
-// -----------------------------------------------
+// ⬇️ Paste your full data URL between the quotes below.
+const LOGO =
+  "PASTE_YOUR_DATA_URL_HERE";
 
 const CATALOG = {
-  "REF Stockholm": [{ id: "ref-gift-set", name: "REF Gift Set" }],
-  "MY.ORGANICS": [{ id: "myorg-retail-shampoo", name: "MY.ORGANICS RETAIL SHAMPOO" }],
+  "REF Stockholm": [
+    {
+      id: "ref-gift-set",
+      name: "REF Gift Set",
+      cost: 27.10,
+      rrp: 49.99,
+    },
+  ],
+  "MY.ORGANICS": [
+    {
+      id: "myorg-retail-shampoo",
+      name: "MY.ORGANICS RETAIL SHAMPOO",
+      cost: 10.45,
+      rrp: 20.99,
+    },
+  ],
 };
 
-const BRANDS = Object.keys(CATALOG);
-
-function useLocalStorage(key, initial) {
-  const [val, setVal] = useState(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : initial;
-    } catch {
-      return initial;
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(val));
-    } catch {}
-  }, [key, val]);
-  return [val, setVal];
-}
-
-export default function App() {
-  /* ---------------- Product selection & pricing ---------------- */
-  const [brand, setBrand] = useLocalStorage("brand", BRANDS[0]);
-  const products = useMemo(() => CATALOG[brand] || [], [brand]);
-  const [productId, setProductId] = useLocalStorage(
-    "productId",
-    (CATALOG[brand] && CATALOG[brand][0]?.id) || ""
+const currency = (n) =>
+  new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(
+    isFinite(n) ? n : 0
   );
 
-  // per-product price overrides (persisted)
-  const [priceOverrides, setPriceOverrides] = useLocalStorage("priceOverrides", {});
-  const [salonCost, setSalonCost] = useLocalStorage("salonCost", 0);
-  const [salonRrp, setSalonRrp] = useLocalStorage("salonRrp", 0);
+export default function SalonRetailCalculator() {
+  // Defaults to REF Gift Set selected & values prefilled
+  const [brand, setBrand] = useState("REF Stockholm");
+  const [productId, setProductId] = useState("ref-gift-set");
+  const [productName, setProductName] = useState("REF Gift Set");
+  const [cost, setCost] = useState(27.1);
+  const [rrp, setRrp] = useState(49.99);
 
-  // reset product to first when brand changes
+  // Salon info
+  const [days, setDays] = useState(5);
+  const [stylists, setStylists] = useState(1);
+  const [unitsPerStylistPerDay, setUnitsPerStylistPerDay] = useState(1);
+
+  // Calculation result
+  const [results, setResults] = useState(null);
+
+  // Products for current brand
+  const products = useMemo(() => CATALOG[brand] ?? [], [brand]);
+
+  // Keep product in sync when brand changes
   useEffect(() => {
-    const first = CATALOG[brand]?.[0]?.id ?? "";
-    setProductId(first);
-  }, [brand, setProductId]);
+    if (!products.length) return;
+    const first = products[0];
+    setProductId(first.id);
+    setProductName(first.name);
+    setCost(first.cost);
+    setRrp(first.rrp);
+    setResults(null);
+  }, [brand]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // when product changes, auto-fill (override -> defaults)
+  // When product changes, load its pricing
   useEffect(() => {
-    if (!productId) return;
-    const override = priceOverrides[productId] || {};
-    const base = DEFAULT_PRICING[productId] || {};
-    setSalonCost(
-      typeof override.salonCost === "number"
-        ? override.salonCost
-        : typeof base.salonCost === "number"
-        ? base.salonCost
-        : 0
-    );
-    setSalonRrp(
-      typeof override.salonRrp === "number"
-        ? override.salonRrp
-        : typeof base.salonRrp === "number"
-        ? base.salonRrp
-        : 0
-    );
-  }, [productId]); // eslint-disable-line
+    const p = products.find((x) => x.id === productId);
+    if (p) {
+      setProductName(p.name);
+      setCost(p.cost);
+      setRrp(p.rrp);
+      setResults(null);
+    }
+  }, [productId, products]);
 
-  // when editing prices, also save override for this productId
-  const onEditCost = (raw) => {
-    const v = Number(raw.replace(/[^0-9.]/g, "")) || 0;
-    setSalonCost(v);
-    if (productId)
-      setPriceOverrides((p) => ({ ...p, [productId]: { ...(p[productId] || {}), salonCost: v } }));
+  const perUnitProfit = useMemo(() => rrp - cost, [rrp, cost]);
+
+  const handleCalculate = () => {
+    const perDayPerStylist = Number(unitsPerStylistPerDay) || 0;
+    const stylistCount = Number(stylists) || 0;
+    const promoDays = Number(days) || 0;
+
+    const totalUnits = perDayPerStylist * stylistCount * promoDays;
+    const totalCost = totalUnits * (Number(cost) || 0);
+    const revenue = totalUnits * (Number(rrp) || 0);
+    const profit = revenue - totalCost;
+
+    setResults({
+      perDayPerStylist,
+      totalUnits,
+      totalCost,
+      revenue,
+      profit,
+    });
   };
-  const onEditRrp = (raw) => {
-    const v = Number(raw.replace(/[^0-9.]/g, "")) || 0;
-    setSalonRrp(v);
-    if (productId)
-      setPriceOverrides((p) => ({ ...p, [productId]: { ...(p[productId] || {}), salonRrp: v } }));
-  };
-
-  /* --------------------- Salon Info calculator -------------------- */
-  const [promoDays, setPromoDays] = useLocalStorage("promoDays", 7);
-  const [stylists, setStylists] = useLocalStorage("stylists", 3);
-  const [perStylistPerDay, setPerStylistPerDay] = useLocalStorage("perStylistPerDay", 2);
-
-  const perDayTotal =
-    Math.max(0, Number(stylists) || 0) * Math.max(0, Number(perStylistPerDay) || 0);
-  const totalUnits = perDayTotal * Math.max(0, Number(promoDays) || 0);
-
-  // Profit & revenue
-  const unitProfit = (Number(salonRrp) || 0) - (Number(salonCost) || 0);
-  const marginPct = (Number(salonRrp) || 0) > 0 ? (unitProfit / Number(salonRrp)) * 100 : 0;
-  const dayRevenue = perDayTotal * (Number(salonRrp) || 0);
-  const dayProfit = perDayTotal * unitProfit;
-  const totalRevenue = totalUnits * (Number(salonRrp) || 0);
-  const totalProfit = totalUnits * unitProfit;
-
-  const selectedProduct = products.find((x) => x.id === productId);
-  const money = (n) =>
-    new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(
-      isFinite(n) ? n : 0
-    );
-  const num = (v, setter) => setter(v.replace(/[^0-9.]/g, ""));
 
   return (
-    <div style={styles.app}>
-      <header style={styles.header}>
-        <img src={LOGO} alt="Salon Brands Pro" style={styles.logo} />
-        <h1 style={styles.title}>Salon Retail Calculator</h1>
-      </header>
-
-      {/* Product by Brand */}
-      <section style={styles.card}>
-        <h2 style={styles.h2}>Product (by brand)</h2>
-        <div style={styles.row}>
-          <label style={styles.label}>Brand</label>
-          <select value={brand} onChange={(e) => setBrand(e.target.value)} style={styles.select}>
-            {BRANDS.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.row}>
-          <label style={styles.label}>Product</label>
-          <select
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-            style={styles.select}
-          >
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.grid2}>
-          <div style={styles.row}>
-            <label style={styles.label}>Salon Cost (£)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={salonCost}
-              onChange={(e) => onEditCost(e.target.value)}
-              style={styles.input}
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-10">
+        {/* Header */}
+        <div className="mb-6 flex items-center gap-4">
+          {LOGO ? (
+            <img
+              src={LOGO}
+              alt="Logo"
+              className="h-14 w-auto object-contain drop-shadow"
             />
-          </div>
-          <div style={styles.row}>
-            <label style={styles.label}>Salon RRP (£)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={salonRrp}
-              onChange={(e) => onEditRrp(e.target.value)}
-              style={styles.input}
-            />
+          ) : (
+            <div className="h-14 w-14 rounded-lg bg-slate-200" />
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">Salon Retail Profit Calculator</h1>
+            <p className="text-sm text-slate-500">
+              Estimate units, revenue & profit for your retail promotion.
+            </p>
           </div>
         </div>
 
-        <p style={styles.note}>
-          Product name is chosen from the list (not editable).{" "}
-          {selectedProduct ? <em>Selected: {selectedProduct.name}</em> : <em>Choose a product</em>}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Product & Pricing */}
+          <div className="rounded-2xl bg-white p-5 shadow">
+            <h2 className="mb-4 text-lg font-semibold">Product & Pricing</h2>
+
+            {/* Brand */}
+            <label className="block text-sm font-medium">Brand</label>
+            <select
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+            >
+              {Object.keys(CATALOG).map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+
+            {/* Product */}
+            <label className="mt-4 block text-sm font-medium">
+              Product (by brand)
+            </label>
+            <select
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+            >
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Read-only product name */}
+            <label className="mt-4 block text-sm font-medium">
+              Product name
+            </label>
+            <input
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2"
+              value={productName}
+              readOnly
+            />
+
+            {/* Cost / RRP */}
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Salon Cost</label>
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cost}
+                  onChange={(e) => setCost(Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">Salon RRP</label>
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={rrp}
+                  onChange={(e) => setRrp(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            {/* Per-unit profit */}
+            <div className="mt-3 text-sm text-slate-600">
+              <span className="font-medium">Salon Profit (per unit): </span>
+              <span>{currency(perUnitProfit)}</span>
+            </div>
+          </div>
+
+          {/* Salon Information */}
+          <div className="rounded-2xl bg-white p-5 shadow">
+            <h2 className="mb-4 text-lg font-semibold">Salon Information</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium">
+                  How many days are you running this promotion?
+                </label>
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={days}
+                  onChange={(e) => setDays(Number(e.target.value))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">
+                  How many stylist do you have?
+                </label>
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={stylists}
+                  onChange={(e) => setStylists(Number(e.target.value))}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium">
+                  How many do you think each stylist can sell a day
+                </label>
+                <input
+                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={unitsPerStylistPerDay}
+                  onChange={(e) =>
+                    setUnitsPerStylistPerDay(Number(e.target.value))
+                  }
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleCalculate}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            >
+              Calculate
+            </button>
+          </div>
+        </div>
+
+        {/* Results */}
+        {results && (
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            {/* Outcome */}
+            <div className="rounded-2xl bg-white p-5 shadow">
+              <h3 className="mb-3 text-lg font-semibold">Outcome</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>your stylist will sell (per day)</span>
+                  <span className="font-semibold">
+                    {results.perDayPerStylist}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Your Stylist will sell (Time you are running the promotion)</span>
+                  <span className="font-semibold">{results.totalUnits}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>This will cost you -</span>
+                  <span className="font-semibold">
+                    {currency(results.totalCost)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Profit (green & eye-catching) */}
+            <div className="rounded-2xl bg-emerald-50 p-5 shadow ring-1 ring-emerald-200">
+              <h3 className="mb-4 text-lg font-semibold text-emerald-900">
+                PROFIT
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-emerald-900/80">Revenue Generated</span>
+                  <span className="font-semibold text-emerald-900">
+                    {currency(results.revenue)}
+                  </span>
+                </div>
+                <div className="h-px bg-emerald-200" />
+                <div className="flex items-center justify-between">
+                  <span className="text-emerald-900">PROFIT</span>
+                  <span className="text-2xl font-extrabold text-emerald-700">
+                    {currency(results.profit)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Footer tip */}
+        <p className="mt-6 text-center text-xs text-slate-500">
+          Tip: change brand/product to auto-populate pricing, then hit Calculate.
         </p>
-      </section>
-
-      {/* Salon Information */}
-      <section style={styles.card}>
-        <h2 style={styles.h2}>Salon Information</h2>
-        <div style={styles.grid3}>
-          <div style={styles.row}>
-            <label style={styles.label}>How many days are you running this promotion?</label>
-            <input
-              type="number"
-              min="0"
-              value={promoDays}
-              onChange={(e) => num(e.target.value, setPromoDays)}
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.row}>
-            <label style={styles.label}>How many stylists do you have?</label>
-            <input
-              type="number"
-              min="0"
-              value={stylists}
-              onChange={(e) => num(e.target.value, setStylists)}
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.row}>
-            <label style={styles.label}>How many do you think each stylist can sell a day?</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={perStylistPerDay}
-              onChange={(e) => num(e.target.value, setPerStylistPerDay)}
-              style={styles.input}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Outcome */}
-      <section style={styles.card}>
-        <h2 style={styles.h2}>Outcome</h2>
-        <div style={styles.kpis}>
-          <div style={styles.kpi}>
-            <div style={styles.kpiLabel}>Your stylists will sell (per day)</div>
-            <div style={styles.kpiValue}>{perDayTotal.toLocaleString()}</div>
-          </div>
-          <div style={styles.kpi}>
-            <div style={styles.kpiLabel}>Your stylists will sell (promotion total)</div>
-            <div style={styles.kpiValue}>{totalUnits.toLocaleString()}</div>
-          </div>
-          <div style={styles.kpi}>
-            <div style={styles.kpiLabel}>This will cost you</div>
-            <div style={styles.kpiValue}>{money(totalUnits * (Number(salonCost) || 0))}</div>
-          </div>
-        </div>
-        <p style={styles.noteSmall}>Cost = total units × salon cost.</p>
-      </section>
-
-      {/* Profit & Revenue */}
-      <section style={styles.card}>
-        <h2 style={styles.h2}>Profit & Revenue</h2>
-        <div style={styles.grid3}>
-          <div style={styles.kpiSoft}>
-            <div style={styles.kpiLabel}>Profit per unit</div>
-            <div style={styles.kpiValue}>{money(unitProfit)}</div>
-            <div style={styles.kpiTiny}>{isFinite(marginPct) ? marginPct.toFixed(1) : 0}% margin</div>
-          </div>
-          <div style={styles.kpiSoft}>
-            <div style={styles.kpiLabel}>Revenue per day</div>
-            <div style={styles.kpiValue}>{money(dayRevenue)}</div>
-            <div style={styles.kpiTiny}>{perDayTotal.toLocaleString()} units × RRP</div>
-          </div>
-          <div style={styles.kpiSoft}>
-            <div style={styles.kpiLabel}>Profit per day</div>
-            <div style={styles.kpiValue}>{money(dayProfit)}</div>
-            <div style={styles.kpiTiny}>{perDayTotal.toLocaleString()} × unit profit</div>
-          </div>
-        </div>
-
-        <div style={{ ...styles.grid2, marginTop: 12 }}>
-          <div style={styles.kpiSoft}>
-            <div style={styles.kpiLabel}>Revenue (promotion total)</div>
-            <div style={styles.kpiValue}>{money(totalRevenue)}</div>
-          </div>
-          <div style={styles.kpiSoft}>
-            <div style={styles.kpiLabel}>Profit (promotion total)</div>
-            <div style={styles.kpiValue}>{money(totalProfit)}</div>
-          </div>
-        </div>
-      </section>
-
-      <footer style={styles.footer}>
-        <small>© {new Date().getFullYear()} Salon Brands Pro</small>
-      </footer>
+      </div>
     </div>
   );
 }
-
-/* --------------------------------- Styles -------------------------------- */
-const styles = {
-  app: {
-    maxWidth: 980,
-    margin: "24px auto",
-    padding: 16,
-    fontFamily:
-      "-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif",
-    color: "#0f172a",
-  },
-  header: { display: "flex", alignItems: "center", gap: 16, marginBottom: 12 },
-  logo: { height: 44, width: "auto" },
-  title: { fontSize: 22, margin: 0, fontWeight: 700 },
-  card: {
-    background: "#fff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-  },
-  h2: { margin: "0 0 12px", fontSize: 18 },
-  row: { display: "flex", flexDirection: "column", gap: 6 },
-  label: { fontSize: 13, color: "#475569" },
-  input: {
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: "1px solid #d1d5db",
-    fontSize: 14,
-  },
-  select: {
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: "1px solid #d1d5db",
-    fontSize: 14,
-    background: "#fff",
-  },
-  grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 },
-  grid3: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 },
-  kpis: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 8 },
-  kpi: {
-    background: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: 12,
-    padding: 14,
-  },
-  kpiSoft: {
-    background: "#f9fafb",
-    border: "1px solid #e5e7eb",
-    borderRadius: 12,
-    padding: 14,
-  },
-  kpiLabel: { fontSize: 12, color: "#64748b" },
-  kpiValue: { fontSize: 22, fontWeight: 700, marginTop: 4 },
-  kpiTiny: { fontSize: 12, color: "#94a3b8", marginTop: 4 },
-  note: { marginTop: 8, color: "#64748b", fontSize: 13 },
-  noteSmall: { marginTop: 8, color: "#64748b", fontSize: 12 },
-  footer: { textAlign: "center", marginTop: 24, color: "#64748b" },
-};
