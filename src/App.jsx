@@ -2,43 +2,17 @@
 import { useEffect, useMemo, useState } from "react";
 
 // ⬇️ If you have a logo data URL, paste it between the quotes.
-const LOGO =
-  "PASTE_YOUR_DATA_URL_HERE";
+const LOGO = "PASTE_YOUR_DATA_URL_HERE";
 
 const CATALOG = {
   "REF Stockholm": [
-    {
-      id: "ref-gift-set",
-      name: "REF Stockholm Gift Set",
-      cost: 27.1,
-      rrp: 49.99,
-    },
-    {
-      id: "ref-shampoo",
-      name: "REF Stockholm Shampoo",
-      cost: 11.4,
-      rrp: 22.79,
-    },
-    {
-      id: "ref-conditioner",
-      name: "REF Stockholm Conditioner",
-      cost: 11.4,
-      rrp: 22.79,
-    },
+    { id: "ref-gift-set", name: "REF Stockholm Gift Set", cost: 27.1, rrp: 49.99 },
+    { id: "ref-shampoo",  name: "REF Stockholm Shampoo",  cost: 11.4, rrp: 22.79 },
+    { id: "ref-conditioner", name: "REF Stockholm Conditioner", cost: 11.4, rrp: 22.79 },
   ],
   "MY.ORGANICS": [
-    {
-      id: "myorg-retail-shampoo",
-      name: "MY.ORGANICS Retail Shampoo",
-      cost: 10.45,
-      rrp: 20.99,
-    },
-    {
-      id: "myorg-conditioner",
-      name: "MY.ORGANICS Conditioner",
-      cost: 11.2,
-      rrp: 21.99,
-    },
+    { id: "myorg-retail-shampoo", name: "MY.ORGANICS Retail Shampoo", cost: 10.45, rrp: 20.99 },
+    { id: "myorg-conditioner",     name: "MY.ORGANICS Conditioner",     cost: 11.2,  rrp: 21.99 },
   ],
 };
 
@@ -51,7 +25,6 @@ export default function SalonRetailCalculator() {
   // Defaults to REF Stockholm Gift Set selected & values prefilled
   const [brand, setBrand] = useState("REF Stockholm");
   const [productId, setProductId] = useState("ref-gift-set");
-  const [productName, setProductName] = useState("REF Stockholm Gift Set");
   const [cost, setCost] = useState(27.1);
   const [rrp, setRrp] = useState(49.99);
 
@@ -71,7 +44,6 @@ export default function SalonRetailCalculator() {
     if (!products.length) return;
     const first = products[0];
     setProductId(first.id);
-    setProductName(first.name);
     setCost(first.cost);
     setRrp(first.rrp);
     setResults(null);
@@ -81,7 +53,6 @@ export default function SalonRetailCalculator() {
   useEffect(() => {
     const p = products.find((x) => x.id === productId);
     if (p) {
-      setProductName(p.name);
       setCost(p.cost);
       setRrp(p.rrp);
       setResults(null);
@@ -100,13 +71,7 @@ export default function SalonRetailCalculator() {
     const revenue = totalUnits * (Number(rrp) || 0);
     const profit = revenue - totalCost;
 
-    setResults({
-      perDayPerStylist,
-      totalUnits,
-      totalCost,
-      revenue,
-      profit,
-    });
+    setResults({ perDayPerStylist, totalUnits, totalCost, revenue, profit });
   };
 
   return (
@@ -165,16 +130,6 @@ export default function SalonRetailCalculator() {
                 </option>
               ))}
             </select>
-
-            {/* Read-only product name */}
-            <label className="mt-4 block text-sm font-medium">
-              Product name
-            </label>
-            <input
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2"
-              value={productName}
-              readOnly
-            />
 
             {/* Cost / RRP */}
             <div className="mt-4 grid grid-cols-2 gap-4">
