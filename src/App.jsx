@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-// Brand logo data URL. To hard-code your logo, paste a full data URL below like:
-// const LOGO = "data:image/png;base64,....";
+// Brand logo data URL. To hard‑code your logo, paste a full data URL below like:
+// const LOGO = "data:image/png;base64,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AUdBUwzZ2+QTOD4DlRkCBXKsDTl4CUaEUePSIa59eYkN4OkgSuAJuHJr9+CBV4GNGzdy5swZIpEIq1at4v3338d1Xfbs2UNWVhYXL17kwoULfP3112RkZAAQiURwHIeCggK01uzYsQPbtklPTycej7Nr1y4ikQjjx48PwmRZWRm1tbVUVlailBp05dJa8+yzz3L58mXmzZvH2rVr2bt3L0opFixYQHJyMmlpaYwdO5auri62bt2K53lMnDiRJUuWBCG7r68PpRSRSISysjLq6uqorKwkOTk5ICoSiZCUlERVVRU9PT08+uij9Pb28thjj1FTU0NpaSmNjY188MEHgZ2Gvp7cQqar8En5XRg1I88PuWPTrmYB/xqFkO0TGLZ9rwWksdcf61g+6ZdjELH955or03Wpl+u6OI7DqlWreOeddyguLiYUCtHd3Y1t26xfv560tDReeeUVRIR4PB4QLyK0traycuVKPM9j5syZFBYWUlVVxYwZM3j44Yf56quvOHXqFCtWrGDChAmICC0tLcyePZulS5dSWlp6nQeLCCdPnuSzzz7jyJEjAKSlpSEiPPfccxQUFLB06VJef/117r//fi5dusScOXO46667UEpRXV3Njh07GDVqFCJCU1MTs2fPpri4mLVr1wbrThwrixYtory8nJSUFN566y2efPJJamtrKSoqoqamBoARI0YMSZ4okCNXUKc7r3qa8r1VLAUFuVi/C189g3W/R2aGBofXuEb9PgKZIWR/M5Jio/6QBfkpcLLDv5qlJUF9D7T3oSZn+4Rfu4mGyqC11lJRUSGjR48OMsq7775bVqxYIdFoVF599dVBY2bNmiUZGRly++23SyQSCcaUlJRIT0+PzJ07N2hLSkqSl156SbTWsmnTJolGo/L555+L1lra2tpkwoQJEo1Gg8z35MmTkp6eLsnJyQJIZmamrFq1Sj799FOJRqOydetWERF55plnJBwOS15enuTl5UlLS0swv127dkkkEpExY8ZINBqVLVu2BPruu+8+SU9Pl02bNkl2drY4jiOWZcn06dPlwIEDIiKyePHiQeuaNWuWNDY2itbavy30Z65ai3iHLl/NpLfX+p9/vCDujjrxLsf6jdw/oNv1+xy54stItF/oEl15TqS+25fbL1POdYr0eqK/axa97bzoz/v1nGgbMoMWEblhocPzPE6fPo3ruowdOxbLsmhubiY7OzuoRFmWRSwWo729PcjAE9lrOBwmNTUVgPr6elpaWsjLy+O2224DoLu7m/b2djIzMwmH/V3d1dVFR0cHubm5OI6D67pcunQpqCxFIhGi0Si9vb20traSkZFBOBxGRGhubsbzPJKTk8nJyQm80rZtmpqacF0X27aH1JeZmUlbWxtKKZKTk4PjJpEDtLa2UldXR0pKCqNHj77eWK5G/nIZGnoH34VdjY44qIdzsdKTBnuYAHHP9+SkAaelJ9Cn/Ta7v3Ov5/dP6Q/D3R642v+eNHzFeViCPc+7ruT4t1aMEhvhZrJvtbp0K3O7FVk36jNw3tfqS5hMKb9CJXEPr6YFdSkGIetqmNUCUQd1baHjN6pi3bRUmVhksJhrErFrFzxcwjYw20xk6dcZaijjDSN/YNY71Peh5jvc++HmPtT4RN9rS6/Sp9ExjXLUoCuKiGCF7V+nVCk3rkH/ZrVoA379OvTf+muSwf/x58KEh6n/v2kZgv9eUP+Y0zI/+P+TwxBsCDYwBBsYgg0MwQaGYANDsIEh2BBsYAg2MAQbGIINDMEGhmADQ7Ah2MAQbGAINjAEGxiCDQzBBreI/wHHLD3Sri7/SQAAAABJRU5ErkJggg==";
 // Leaving it empty enables the Upload button in the header.
-const LOGO = "data:image/png;base64,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AUdBUwzZ2+QTOD4DlRkCBXKsDTl4CUaEUePSIa59eYkN4OkgSuAJuHJr9+CBV4GNGzdy5swZIpEIq1at4v3338d1Xfbs2UNWVhYXL17kwoULfP3112RkZAAQiURwHIeCggK01uzYsQPbtklPTycej7Nr1y4ikQjjx48PwmRZWRm1tbVUVlailBp05dJa8+yzz3L58mXmzZvH2rVr2bt3L0opFixYQHJyMmlpaYwdO5auri62bt2K53lMnDiRJUuWBCG7r68PpRSRSISysjLq6uqorKwkOTk5ICoSiZCUlERVVRU9PT08+uij9Pb28thjj1FTU0NpaSmNjY188MEHgZ2Gvp7cQqar8En5XRg1I88PuWPTrmYB/xqFkO0TGLZ9rwWksdcf61g+6ZdjELH955or03Wpl+u6OI7DqlWreOeddyguLiYUCtHd3Y1t26xfv560tDReeeUVRIR4PB4QLyK0traycuVKPM9j5syZFBYWUlVVxYwZM3j44Yf56quvOHXqFCtWrGDChAmICC0tLcyePZulS5dSWlp6nQeLCCdPnuSzzz7jyJEjAKSlpSEiPPfccxQUFLB06VJef/117r//fi5dusScOXO46667UEpRXV3Njh07GDVqFCJCU1MTs2fPpri4mLVr1wbrThwrixYtory8nJSUFN566y2efPJJamtrKSoqoqamBoARI0YMSZ4okCNXUKc7r3qa8r1VLAUFuVi/C189g3W/R2aGBofXuEb9PgKZIWR/M5Jio/6QBfkpcLLDv5qlJUF9D7T3oSZn+4Rfu4mGyqC11lJRUSGjR48OMsq7775bVqxYIdFoVF599dVBY2bNmiUZGRly++23SyQSCcaUlJRIT0+PzJ07N2hLSkqSl156SbTWsmnTJolGo/L555+L1lra2tpkwoQJEo1Gg8z35MmTkp6eLsnJyQJIZmamrFq1Sj799FOJRqOydetWERF55plnJBwOS15enuTl5UlLS0swv127dkkkEpExY8ZINBqVLVu2BPruu+8+SU9Pl02bNkl2drY4jiOWZcn06dPlwIEDIiKyePHiQeuaNWuWNDY2itbavy30Z65ai3iHLl/NpLfX+p9/vCDujjrxLsf6jdw/oNv1+xy54stItF/oEl15TqS+25fbL1POdYr0eqK/axa97bzoz/v1nGgbMoMWEblhocPzPE6fPo3ruowdOxbLsmhubiY7OzuoRFmWRSwWo729PcjAE9lrOBwmNTUVgPr6elpaWsjLy+O2224DoLu7m/b2djIzMwmH/V3d1dVFR0cHubm5OI6D67pcunQpqCxFIhGi0Si9vb20traSkZFBOBxGRGhubsbzPJKTk8nJyQm80rZtmpqacF0X27aH1JeZmUlbWxtKKZKTk4PjJpEDtLa2UldXR0pKCqNHj77eWK5G/nIZGnoH34VdjY44qIdzsdKTBnuYAHHP9+SkAaelJ9Cn/Ta7v3Ov5/dP6Q/D3R642v+eNHzFeViCPc+7ruT4t1aMEhvhZrJvtbp0K3O7FVk36jNw3tfqS5hMKb9CJXEPr6YFdSkGIetqmNUCUQd1baHjN6pi3bRUmVhksJhrErFrFzxcwjYw20xk6dcZaijjDSN/YNY71Peh5jvc++HmPtT4RN9rS6/Sp9ExjXLUoCuKiGCF7V+nVCk3rkH/ZrVoA379OvTf+muSwf/x58KEh6n/v2kZgv9eUP+Y0zI/+P+TwxBsCDYwBBsYgg0MwQaGYANDsIEh2BBsYAg2MAQbGIINDMEGhmADQ7Ah2MAQbGAINjAEGxiCDQzBBreI/wHHLD3Sri7/SQAAAABJRU5ErkJggg==";
+const LOGO = "";
 
 // ==== Utility functions ====
 const gbp = (n) =>
@@ -12,6 +12,16 @@ const gbp = (n) =>
   );
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+
+// --- Simple in-memory catalog by brand ---
+const CATALOG = {
+  "REF Stockholm": [
+    { id: "ref-gift-set", name: "REF Gift Set", cost: 27.1, rrp: 49.99 }
+  ],
+  "MY.ORGANICS": [
+    { id: "myo-retail-shampoo", name: "MY.ORGANICS RETAIL SHAMPOO", cost: 10.45, rrp: 20.99 }
+  ],
+};
 
 // Pure calculator for easy testing
 export function computeTotals({ cost, rrp, days, stylists, unitsPerStylistPerDay }) {
@@ -30,6 +40,10 @@ export function computeTotals({ cost, rrp, days, stylists, unitsPerStylistPerDay
 }
 
 export default function SalonRetailCalculator() {
+  // Brand & product selection
+  const [brand, setBrand] = useState("REF Stockholm");
+  const [productId, setProductId] = useState("ref-gift-set");
+
   // Inputs
   const [productName, setProductName] = useState("REF Gift Set");
   const [cost, setCost] = useState(27.1); // Salon Cost per unit
@@ -53,6 +67,23 @@ export default function SalonRetailCalculator() {
     reader.readAsDataURL(file);
   };
 
+  // When brand changes, default to first product for that brand
+  useEffect(() => {
+    const list = CATALOG[brand] || [];
+    const first = list[0];
+    if (first) setProductId(first.id);
+  }, [brand]);
+
+  // When product changes, prefill name/cost/rrp from catalog (still editable)
+  useEffect(() => {
+    const list = CATALOG[brand] || [];
+    const p = list.find((x) => x.id === productId);
+    if (!p) return;
+    if (p.name) setProductName(p.name);
+    if (typeof p.cost === "number") setCost(p.cost);
+    if (typeof p.rrp === "number") setRrp(p.rrp);
+  }, [brand, productId]);
+
   // Results (populated when clicking Calculate)
   const [results, setResults] = useState(null);
 
@@ -64,6 +95,8 @@ export default function SalonRetailCalculator() {
   };
 
   const reset = () => {
+    setBrand("REF Stockholm");
+    setProductId("ref-gift-set");
     setProductName("REF Gift Set");
     setCost(27.1);
     setRrp(49.99);
@@ -121,6 +154,9 @@ export default function SalonRetailCalculator() {
     });
   }, []);
 
+  const brandOptions = Object.keys(CATALOG);
+  const productsForBrand = CATALOG[brand] || [];
+
   return (
     <div className="min-h-screen bg-slate-50 py-10 px-4">
       <div className="mx-auto max-w-5xl">
@@ -140,7 +176,7 @@ export default function SalonRetailCalculator() {
               Upload logo
             </label>
             <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={onLogoUpload} />
-            <span className="text-sm text-slate-500">v1.3</span>
+            <span className="text-sm text-slate-500">v1.6</span>
           </div>
         </header>
 
@@ -150,13 +186,42 @@ export default function SalonRetailCalculator() {
             <h2 className="mb-4 text-xl font-semibold">Product</h2>
 
             <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Brand</label>
+                  <select
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:ring-2 focus:ring-slate-800"
+                    value={brand}
+                    onChange={(e) => setBrand(e.target.value)}
+                  >
+                    {brandOptions.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Product (by brand)</label>
+                  <select
+                    className="w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:ring-2 focus:ring-slate-800"
+                    value={productId}
+                    onChange={(e) => setProductId(e.target.value)}
+                  >
+                    {productsForBrand.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Product Name</label>
                 <input
-                  className="w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:ring-2 focus:ring-slate-800"
+                  className="w-full rounded-xl border border-slate-300 bg-slate-100 p-3 text-slate-700"
                   value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder="e.g., REF Gift Set"
+                  readOnly
+                  disabled
+                  title="Select a product from the Product list"
                 />
               </div>
 
@@ -191,15 +256,7 @@ export default function SalonRetailCalculator() {
                 </div>
               </div>
 
-              <div className="rounded-xl bg-slate-50 p-4">
-                <div className="text-sm text-slate-600">Salon Profit (per unit)</div>
-                <div className={`text-2xl font-semibold ${unitProfit < 0 ? "text-rose-600" : "text-slate-900"}`}>
-                  {gbp(unitProfit)}
-                </div>
-                {unitProfit < 0 && (
-                  <p className="mt-1 text-sm text-rose-600">Warning: RRP is below cost. Increase your RRP or lower cost.</p>
-                )}
-              </div>
+              <p className="text-xs text-slate-500">Selecting a product will pre-fill the fields above. Product name is locked; choose via the Product dropdown. You can still override Cost and RRP.</p>
             </div>
           </section>
 
